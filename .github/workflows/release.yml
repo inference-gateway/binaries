@@ -27,7 +27,7 @@ jobs:
             ${{ github.event.repository.name }}
 
       - name: Checkout
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           token: ${{ steps.app_token.outputs.token }}
@@ -76,7 +76,7 @@ jobs:
             arch: arm64
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
 
       - uses: DeterminateSystems/nix-installer-action@v22
 
@@ -125,7 +125,7 @@ jobs:
             ${{ github.event.repository.name }}
 
       - name: Checkout
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           token: ${{ steps.app_token.outputs.token }}
