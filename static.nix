@@ -1,12 +1,12 @@
-# Static (musl) builds of the STT binaries, published as release assets.
+# Static (musl) builds of the Linux STT binaries, published as release assets.
 # Build:
 #   nix build --impure -f static.nix whisper-cli            (Linux amd64/arm64)
 #   nix build --impure -f static.nix ffmpeg                 (Linux amd64/arm64)
-#   nix build --impure -f static.nix whisper-cli-windows     (Windows amd64)
 #
-# macOS binaries build from source on native runners; Windows ffmpeg
-# cross-compiles from source with mingw-w64 (nixpkgs marks win64 ffmpeg broken).
-# Both live in the release workflow, not here.
+# macOS and Windows binaries build from source on their runners (mingw-w64 for
+# Windows), not here: nixpkgs can't cross-compile whisper-cpp to Windows (its
+# download-ggml-model wrapper needs bash on the Windows host, which nixpkgs
+# refuses to evaluate) and marks win64 ffmpeg broken. Both live in the workflow.
 #
 # nixpkgs is pinned to a known-good revision so the release is reproducible;
 # tracking nixos-unstable let upstream drift break the build.
@@ -58,11 +58,8 @@ let
     withZvbi = false;
   };
 
-  win = flake.legacyPackages.${builtins.currentSystem}.pkgsCross.mingwW64.pkgsStatic;
 in
 {
   whisper-cli = whisperFor ps;
   ffmpeg = ffmpegOverride ps.ffmpeg-headless;
-
-  whisper-cli-windows = whisperFor win;
 }
