@@ -115,8 +115,9 @@ jobs:
           brew install whisper-cpp ffmpeg
           cp "$(brew --prefix)/bin/whisper-cli" "whisper-cli-darwin-${{ matrix.arch }}"
           cp "$(brew --prefix)/bin/ffmpeg" "ffmpeg-darwin-${{ matrix.arch }}"
-          codesign -s - "whisper-cli-darwin-${{ matrix.arch }}"
-          codesign -s - "ffmpeg-darwin-${{ matrix.arch }}"
+          # -f: brew bottles arrive ad-hoc signed, plain -s fails on those
+          codesign -f -s - "whisper-cli-darwin-${{ matrix.arch }}"
+          codesign -f -s - "ffmpeg-darwin-${{ matrix.arch }}"
 
       - name: Sanity-check binaries
         run: |
@@ -159,7 +160,7 @@ jobs:
         uses: actions/create-github-app-token@v3.2.0
         id: app_token
         with:
-          client-id: ${{ secrets.RELEASER_APP_ID }}
+          client-id: ${{ secrets.RELEASER_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASER_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: |
