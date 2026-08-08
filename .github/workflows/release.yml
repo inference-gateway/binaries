@@ -83,7 +83,7 @@ jobs:
           - runner: macos-15
             os: darwin
             arch: arm64
-          - runner: macos-13
+          - runner: macos-15
             os: darwin
             arch: amd64
     runs-on: ${{ matrix.runner }}
@@ -158,20 +158,32 @@ jobs:
           set -euo pipefail
           brew install cmake nasm
 
+          case "${{ matrix.arch }}" in
+            amd64) OSX_ARCH=x86_64 ;;
+            arm64) OSX_ARCH=arm64 ;;
+          esac
+
           git clone --depth 1 https://github.com/ggml-org/whisper.cpp
           cmake -S whisper.cpp -B whisper.cpp/build \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES="$OSX_ARCH" \
             -DBUILD_SHARED_LIBS=OFF \
             -DWHISPER_BUILD_TESTS=OFF \
             -DWHISPER_BUILD_EXAMPLES=ON \
+            -DGGML_NATIVE=OFF \
             -DGGML_METAL=OFF \
             -DGGML_ACCELERATE=ON
           cmake --build whisper.cpp/build -j --config Release --target whisper-cli
           install -m755 whisper.cpp/build/bin/whisper-cli "whisper-cli-darwin-${{ matrix.arch }}"
 
+          ffmpeg_cross=()
+          if [ "$OSX_ARCH" != "$(uname -m)" ]; then
+            ffmpeg_cross=(--enable-cross-compile --arch="$OSX_ARCH"
+              --extra-cflags="-arch $OSX_ARCH" --extra-ldflags="-arch $OSX_ARCH")
+          fi
           git clone --depth 1 https://github.com/FFmpeg/FFmpeg ffmpeg-src
           ( cd ffmpeg-src && ./configure \
-              --cc=clang \
+              --cc=clang ${ffmpeg_cross[@]+"${ffmpeg_cross[@]}"} \
               --disable-shared --enable-static \
               --disable-doc --disable-debug --disable-network --disable-autodetect \
               --disable-everything \
@@ -198,16 +210,21 @@ jobs:
             "./ffmpeg-linux-${{ matrix.arch }}" -version
             "./whisper-cli-linux-${{ matrix.arch }}" --help > /dev/null
           elif [ "${{ matrix.os }}" = darwin ]; then
+            case "${{ matrix.arch }}" in amd64) want=x86_64 ;; arm64) want=arm64 ;; esac
             for bin in "whisper-cli-darwin-${{ matrix.arch }}" "ffmpeg-darwin-${{ matrix.arch }}"; do
-              file "$bin" | grep -q 'Mach-O'
+              file "$bin" | grep -q "Mach-O.*$want"
               if otool -L "$bin" | tail -n +2 | grep -vqE '^\s+(/usr/lib/|/System/Library/)'; then
                 echo "::error::$bin links a non-system library (not self-contained):"
                 otool -L "$bin"
                 exit 1
               fi
             done
-            "./ffmpeg-darwin-${{ matrix.arch }}" -version
-            "./whisper-cli-darwin-${{ matrix.arch }}" --help > /dev/null
+            if [ "$want" = "$(uname -m)" ]; then
+              "./ffmpeg-darwin-${{ matrix.arch }}" -version
+              "./whisper-cli-darwin-${{ matrix.arch }}" --help > /dev/null
+            else
+              echo "cross-built $want on $(uname -m) host; skipping execution check"
+            fi
           elif [ "${{ matrix.os }}" = windows ]; then
             file "whisper-cli-windows-${{ matrix.arch }}.exe" | grep -qE '(PE32|PE32\+)'
             file "ffmpeg-windows-${{ matrix.arch }}.exe" | grep -qE '(PE32|PE32\+)'
