@@ -21,8 +21,6 @@ let
   flake = builtins.getFlake "github:NixOS/nixpkgs/753cc8a3a87467296ddd1fa93f0cc3e81120ee46";
   ps = flake.legacyPackages.${builtins.currentSystem}.pkgsStatic;
 
-  # wget comes from the package set, not the whisper-cpp derivation: pkg.wget is
-  # absent under musl (the postInstall wrapper drops it), which broke the build.
   whisperFor = pkgs: pkgs.whisper-cpp.override {
     withSDL = false;
     withFFmpegSupport = false;
