@@ -1,10 +1,15 @@
 # Static (musl) builds of the STT binaries, published as release assets.
 # Build:
 #   nix build --impure -f static.nix whisper-cli            (Linux amd64/arm64)
+#   nix build --impure -f static.nix ffmpeg                 (Linux amd64/arm64)
 #   nix build --impure -f static.nix whisper-cli-windows     (Windows amd64)
-#   nix build --impure -f static.nix ffmpeg-windows          (Windows amd64)
 #
-# macOS builds use brew on native macOS runners (not Nix).
+# macOS binaries build from source on native runners; Windows ffmpeg
+# cross-compiles from source with mingw-w64 (nixpkgs marks win64 ffmpeg broken).
+# Both live in the release workflow, not here.
+#
+# nixpkgs is pinned to a known-good revision so the release is reproducible;
+# tracking nixos-unstable let upstream drift break the build.
 #
 # Every override below disables an optional feature whose dependency either
 # refuses to build statically (badPlatforms isStatic), fails to compile/link
@@ -13,13 +18,13 @@
 # the downloaded ffmpeg only does local file-to-file audio conversion
 # (no capture devices, network protocols, video encoders, or filters).
 let
-  flake = builtins.getFlake "github:NixOS/nixpkgs/nixos-unstable";
+  flake = builtins.getFlake "github:NixOS/nixpkgs/753cc8a3a87467296ddd1fa93f0cc3e81120ee46";
   ps = flake.legacyPackages.${builtins.currentSystem}.pkgsStatic;
 
-  whisperOverride = pkg: pkg.override {
+  whisperFor = pkgs: pkgs.whisper-cpp.override {
     withSDL = false;
     withFFmpegSupport = false;
-    wget = pkg.wget.overrideAttrs (_: { doCheck = false; });
+    wget = pkgs.wget.overrideAttrs (_: { doCheck = false; });
   };
 
   ffmpegOverride = pkg: pkg.override {
@@ -56,9 +61,8 @@ let
   win = flake.legacyPackages.${builtins.currentSystem}.pkgsCross.mingwW64.pkgsStatic;
 in
 {
-  whisper-cli = whisperOverride ps.whisper-cpp;
+  whisper-cli = whisperFor ps;
   ffmpeg = ffmpegOverride ps.ffmpeg-headless;
 
-  whisper-cli-windows = whisperOverride win.whisper-cpp;
-  ffmpeg-windows = ffmpegOverride win.ffmpeg-headless;
+  whisper-cli-windows = whisperFor win;
 }

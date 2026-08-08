@@ -101,13 +101,34 @@ jobs:
           install -m755 "$WHISPER/bin/whisper-cli" "whisper-cli-linux-${{ matrix.arch }}"
           install -m755 "$FFMPEG/bin/ffmpeg" "ffmpeg-linux-${{ matrix.arch }}"
 
-      - name: Build Windows binaries (Nix cross-compile)
+      - name: Build Windows whisper-cli (Nix cross-compile)
         if: matrix.os == 'windows'
         run: |
           WHISPER=$(nix build --impure --no-link --print-out-paths -f static.nix whisper-cli-windows)
-          FFMPEG=$(nix build --impure --no-link --print-out-paths -f static.nix ffmpeg-windows | grep -e '-bin$')
           install -m755 "$WHISPER/bin/whisper-cli.exe" "whisper-cli-windows-${{ matrix.arch }}.exe"
-          install -m755 "$FFMPEG/bin/ffmpeg.exe" "ffmpeg-windows-${{ matrix.arch }}.exe"
+
+      - name: Build Windows ffmpeg (mingw-w64 from source)
+        if: matrix.os == 'windows'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64 nasm make git
+          git clone --depth 1 https://github.com/FFmpeg/FFmpeg ffmpeg-src
+          ( cd ffmpeg-src && ./configure \
+              --arch=x86_64 --target-os=mingw32 --cross-prefix=x86_64-w64-mingw32- \
+              --disable-shared --enable-static \
+              --disable-doc --disable-debug --disable-network --disable-autodetect \
+              --disable-everything \
+              --enable-demuxer=wav,w64,ogg,matroska,mov,mp3,flac,aac,aiff \
+              --enable-muxer=wav,w64 \
+              --enable-decoder=pcm_s16le,pcm_s16be,pcm_f32le,pcm_u8,opus,vorbis,mp3,aac,flac,alac \
+              --enable-encoder=pcm_s16le \
+              --enable-parser=opus,vorbis,aac,flac,mpegaudio \
+              --enable-protocol=file,pipe \
+              --enable-filter=aresample,aformat,anull,atrim \
+              --enable-swresample \
+            && make -j"$(nproc)" )
+          install -m755 ffmpeg-src/ffmpeg.exe "ffmpeg-windows-${{ matrix.arch }}.exe"
 
       - name: Build macOS binaries (static from source)
         if: matrix.os == 'darwin'
