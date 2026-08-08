@@ -17,15 +17,15 @@ let
   ps = flake.legacyPackages.${builtins.currentSystem}.pkgsStatic;
 
   whisperOverride = pkg: pkg.override {
-withSDL = false;
-withFFmpegSupport = false;
+    withSDL = false;
+    withFFmpegSupport = false;
     wget = pkg.wget.overrideAttrs (_: { doCheck = false; });
   };
 
   ffmpegOverride = pkg: pkg.override {
-withOpenmpt = false;
-withV4l2 = false;
-withVaapi = false;
+    withOpenmpt = false;
+    withV4l2 = false;
+    withVaapi = false;
     withOpencl = false; # ocl-icd fails to link statically
     withCudaLLVM = false; # tries to build all of LLVM statically, fails
     withBluray = false; # -> fontconfig/python-fonttools build failures
