@@ -22,7 +22,6 @@ withFFmpegSupport = false;
     wget = pkg.wget.overrideAttrs (_: { doCheck = false; });
   };
 
-  # Reusable overrides for ffmpeg across platforms.
   ffmpegOverride = pkg: pkg.override {
 withOpenmpt = false;
 withV4l2 = false;
