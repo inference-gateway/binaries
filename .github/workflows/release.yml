@@ -64,43 +64,84 @@ jobs:
           semantic-release --dry-run
 
   build:
-    name: Build ${{ matrix.arch }}
+    name: Build ${{ matrix.os }}-${{ matrix.arch }}
     needs: version
     if: needs.version.outputs.new_release_published == 'true'
     strategy:
       matrix:
         include:
           - runner: ubuntu-24.04
+            os: linux
             arch: amd64
           - runner: ubuntu-24.04-arm
+            os: linux
             arch: arm64
+          - runner: ubuntu-24.04
+            os: windows
+            arch: amd64
+          - runner: macos-15
+            os: darwin
+            arch: arm64
+          - runner: macos-13
+            os: darwin
+            arch: amd64
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7.0.1
 
-      - uses: DeterminateSystems/nix-installer-action@v22
+      - name: Install Nix
+        if: matrix.os != 'darwin'
+        uses: DeterminateSystems/nix-installer-action@v22
 
-      - name: Build static binaries
+      - name: Build Linux binaries (Nix)
+        if: matrix.os == 'linux'
         run: |
           WHISPER=$(nix build --impure --no-link --print-out-paths -f static.nix whisper-cli)
           FFMPEG=$(nix build --impure --no-link --print-out-paths -f static.nix ffmpeg | grep -e '-bin$')
           install -m755 "$WHISPER/bin/whisper-cli" "whisper-cli-linux-${{ matrix.arch }}"
           install -m755 "$FFMPEG/bin/ffmpeg" "ffmpeg-linux-${{ matrix.arch }}"
 
+      - name: Build Windows binaries (Nix cross-compile)
+        if: matrix.os == 'windows'
+        run: |
+          WHISPER=$(nix build --impure --no-link --print-out-paths -f static.nix whisper-cli-windows)
+          FFMPEG=$(nix build --impure --no-link --print-out-paths -f static.nix ffmpeg-windows | grep -e '-bin$')
+          install -m755 "$WHISPER/bin/whisper-cli.exe" "whisper-cli-windows-${{ matrix.arch }}.exe"
+          install -m755 "$FFMPEG/bin/ffmpeg.exe" "ffmpeg-windows-${{ matrix.arch }}.exe"
+
+      - name: Build macOS binaries (brew)
+        if: matrix.os == 'darwin'
+        run: |
+          brew install whisper-cpp ffmpeg
+          cp "$(brew --prefix)/bin/whisper-cli" "whisper-cli-darwin-${{ matrix.arch }}"
+          cp "$(brew --prefix)/bin/ffmpeg" "ffmpeg-darwin-${{ matrix.arch }}"
+          codesign -s - "whisper-cli-darwin-${{ matrix.arch }}"
+          codesign -s - "ffmpeg-darwin-${{ matrix.arch }}"
+
       - name: Sanity-check binaries
         run: |
-          for bin in whisper-cli ffmpeg; do
-            file "$bin-linux-${{ matrix.arch }}" | grep -q 'statically linked'
-          done
-          "./ffmpeg-linux-${{ matrix.arch }}" -version
-          "./whisper-cli-linux-${{ matrix.arch }}" --help > /dev/null
+          if [ "${{ matrix.os }}" = linux ]; then
+            for bin in whisper-cli ffmpeg; do
+              file "$bin-linux-${{ matrix.arch }}" | grep -q 'statically linked'
+            done
+            "./ffmpeg-linux-${{ matrix.arch }}" -version
+            "./whisper-cli-linux-${{ matrix.arch }}" --help > /dev/null
+          elif [ "${{ matrix.os }}" = darwin ]; then
+            file "whisper-cli-darwin-${{ matrix.arch }}" | grep -q 'Mach-O'
+            file "ffmpeg-darwin-${{ matrix.arch }}" | grep -q 'Mach-O'
+            "./ffmpeg-darwin-${{ matrix.arch }}" -version
+            "./whisper-cli-darwin-${{ matrix.arch }}" --help > /dev/null
+          elif [ "${{ matrix.os }}" = windows ]; then
+            file "whisper-cli-windows-${{ matrix.arch }}.exe" | grep -qE '(PE32|PE32\+)'
+            file "ffmpeg-windows-${{ matrix.arch }}.exe" | grep -qE '(PE32|PE32\+)'
+          fi
 
       - uses: actions/upload-artifact@v7.0.1
         with:
-          name: binaries-${{ matrix.arch }}
+          name: binaries-${{ matrix.os }}-${{ matrix.arch }}
           path: |
-            whisper-cli-linux-${{ matrix.arch }}
-            ffmpeg-linux-${{ matrix.arch }}
+            whisper-cli-*
+            ffmpeg-*
           if-no-files-found: error
           retention-days: 1
 
@@ -163,8 +204,9 @@ jobs:
       - name: Prepare release artifacts
         run: |
           cd dist
-          chmod +x whisper-cli-linux-* ffmpeg-linux-*
-          sha256sum whisper-cli-linux-* ffmpeg-linux-* > checksums.txt
+          chmod +x whisper-cli-* ffmpeg-*
+          # checksum everything but the checksum file itself
+          sha256sum whisper-cli-* ffmpeg-* | grep -v checksums.txt > checksums.txt
 
       - name: Verify all assets present
         run: |
@@ -173,8 +215,14 @@ jobs:
           for f in \
             whisper-cli-linux-amd64 \
             whisper-cli-linux-arm64 \
+            whisper-cli-darwin-amd64 \
+            whisper-cli-darwin-arm64 \
+            whisper-cli-windows-amd64.exe \
             ffmpeg-linux-amd64 \
             ffmpeg-linux-arm64 \
+            ffmpeg-darwin-amd64 \
+            ffmpeg-darwin-arm64 \
+            ffmpeg-windows-amd64.exe \
             checksums.txt; do
             if [ ! -f "$f" ]; then
               echo "::error::missing release asset: $f"
