@@ -18,18 +18,16 @@ let
 
   # Reusable overrides for whisper-cli across platforms.
   whisperOverride = pkg: pkg.override {
-    withSDL = false; # SDL2 -> libpulseaudio, which refuses static
-    withFFmpegSupport = false;
-    # only used to wrap the model-download script (not shipped); its test
-    # suite fails under musl
+withSDL = false;
+withFFmpegSupport = false;
     wget = pkg.wget.overrideAttrs (_: { doCheck = false; });
   };
 
   # Reusable overrides for ffmpeg across platforms.
   ffmpegOverride = pkg: pkg.override {
-    withOpenmpt = false; # -> mpg123 -> libpulseaudio (refuses static)
-    withV4l2 = false; # -> libbpf -> elfutils (refuses static)
-    withVaapi = false; # libva refuses static
+withOpenmpt = false;
+withV4l2 = false;
+withVaapi = false;
     withOpencl = false; # ocl-icd fails to link statically
     withCudaLLVM = false; # tries to build all of LLVM statically, fails
     withBluray = false; # -> fontconfig/python-fonttools build failures
@@ -57,7 +55,6 @@ let
     withZvbi = false;
   };
 
-  # Windows cross-compilation via mingwW64 from the same Linux runner.
   win = flake.legacyPackages.${builtins.currentSystem}.pkgsCross.mingwW64.pkgsStatic;
 in
 {
