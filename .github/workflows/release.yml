@@ -68,6 +68,7 @@ jobs:
     needs: version
     if: needs.version.outputs.new_release_published == 'true'
     strategy:
+      fail-fast: false
       matrix:
         include:
           - runner: ubuntu-24.04
@@ -101,11 +102,31 @@ jobs:
           install -m755 "$WHISPER/bin/whisper-cli" "whisper-cli-linux-${{ matrix.arch }}"
           install -m755 "$FFMPEG/bin/ffmpeg" "ffmpeg-linux-${{ matrix.arch }}"
 
-      - name: Build Windows whisper-cli (Nix cross-compile)
+      - name: Build Windows whisper-cli (mingw-w64 from source)
         if: matrix.os == 'windows'
         run: |
-          WHISPER=$(nix build --impure --no-link --print-out-paths -f static.nix whisper-cli-windows)
-          install -m755 "$WHISPER/bin/whisper-cli.exe" "whisper-cli-windows-${{ matrix.arch }}.exe"
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 cmake make git
+
+          git clone --depth 1 https://github.com/ggml-org/whisper.cpp
+          cat > mingw-w64.cmake <<'EOF'
+          set(CMAKE_SYSTEM_NAME Windows)
+          set(CMAKE_C_COMPILER   x86_64-w64-mingw32-gcc)
+          set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
+          set(CMAKE_RC_COMPILER  x86_64-w64-mingw32-windres)
+          EOF
+          cmake -S whisper.cpp -B whisper.cpp/build \
+            -DCMAKE_TOOLCHAIN_FILE="$PWD/mingw-w64.cmake" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DWHISPER_BUILD_TESTS=OFF \
+            -DWHISPER_BUILD_EXAMPLES=ON \
+            -DGGML_NATIVE=OFF \
+            -DGGML_OPENMP=OFF \
+            -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++"
+          cmake --build whisper.cpp/build -j --config Release --target whisper-cli
+          install -m755 whisper.cpp/build/bin/whisper-cli.exe "whisper-cli-windows-${{ matrix.arch }}.exe"
 
       - name: Build Windows ffmpeg (mingw-w64 from source)
         if: matrix.os == 'windows'
