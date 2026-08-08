@@ -106,9 +106,6 @@ jobs:
         if: matrix.os == 'windows'
         run: |
           set -euo pipefail
-          # Ubuntu's apt mingw-w64 (11.x) headers are too old for current ggml
-          # (missing THREAD_POWER_THROTTLING_STATE). llvm-mingw ships current
-          # headers + UCRT and cross-compiles a self-contained static .exe.
           LLVM_MINGW=llvm-mingw-20260616-ucrt-ubuntu-22.04-x86_64
           curl -fsSL "https://github.com/mstorsjo/llvm-mingw/releases/download/20260616/${LLVM_MINGW}.tar.xz" | tar -xJ
           export PATH="$PWD/${LLVM_MINGW}/bin:$PATH"
