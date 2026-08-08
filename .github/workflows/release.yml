@@ -109,12 +109,40 @@ jobs:
           install -m755 "$WHISPER/bin/whisper-cli.exe" "whisper-cli-windows-${{ matrix.arch }}.exe"
           install -m755 "$FFMPEG/bin/ffmpeg.exe" "ffmpeg-windows-${{ matrix.arch }}.exe"
 
-      - name: Build macOS binaries (brew)
+      - name: Build macOS binaries (static from source)
         if: matrix.os == 'darwin'
         run: |
-          brew install whisper-cpp ffmpeg
-          cp "$(brew --prefix)/bin/whisper-cli" "whisper-cli-darwin-${{ matrix.arch }}"
-          cp "$(brew --prefix)/bin/ffmpeg" "ffmpeg-darwin-${{ matrix.arch }}"
+          set -euo pipefail
+          brew install cmake nasm
+
+          git clone --depth 1 https://github.com/ggml-org/whisper.cpp
+          cmake -S whisper.cpp -B whisper.cpp/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DWHISPER_BUILD_TESTS=OFF \
+            -DWHISPER_BUILD_EXAMPLES=ON \
+            -DGGML_METAL=OFF \
+            -DGGML_ACCELERATE=ON
+          cmake --build whisper.cpp/build -j --config Release --target whisper-cli
+          install -m755 whisper.cpp/build/bin/whisper-cli "whisper-cli-darwin-${{ matrix.arch }}"
+
+          git clone --depth 1 https://github.com/FFmpeg/FFmpeg ffmpeg-src
+          ( cd ffmpeg-src && ./configure \
+              --cc=clang \
+              --disable-shared --enable-static \
+              --disable-doc --disable-debug --disable-network --disable-autodetect \
+              --disable-everything \
+              --enable-demuxer=wav,w64,ogg,matroska,mov,mp3,flac,aac,aiff \
+              --enable-muxer=wav,w64 \
+              --enable-decoder=pcm_s16le,pcm_s16be,pcm_f32le,pcm_u8,opus,vorbis,mp3,aac,flac,alac \
+              --enable-encoder=pcm_s16le \
+              --enable-parser=opus,vorbis,aac,flac,mpegaudio \
+              --enable-protocol=file,pipe \
+              --enable-filter=aresample,aformat,anull,atrim \
+              --enable-swresample \
+            && make -j"$(sysctl -n hw.ncpu)" )
+          install -m755 ffmpeg-src/ffmpeg "ffmpeg-darwin-${{ matrix.arch }}"
+
           codesign -f -s - "whisper-cli-darwin-${{ matrix.arch }}"
           codesign -f -s - "ffmpeg-darwin-${{ matrix.arch }}"
 
@@ -127,8 +155,14 @@ jobs:
             "./ffmpeg-linux-${{ matrix.arch }}" -version
             "./whisper-cli-linux-${{ matrix.arch }}" --help > /dev/null
           elif [ "${{ matrix.os }}" = darwin ]; then
-            file "whisper-cli-darwin-${{ matrix.arch }}" | grep -q 'Mach-O'
-            file "ffmpeg-darwin-${{ matrix.arch }}" | grep -q 'Mach-O'
+            for bin in "whisper-cli-darwin-${{ matrix.arch }}" "ffmpeg-darwin-${{ matrix.arch }}"; do
+              file "$bin" | grep -q 'Mach-O'
+              if otool -L "$bin" | tail -n +2 | grep -vqE '^\s+(/usr/lib/|/System/Library/)'; then
+                echo "::error::$bin links a non-system library (not self-contained):"
+                otool -L "$bin"
+                exit 1
+              fi
+            done
             "./ffmpeg-darwin-${{ matrix.arch }}" -version
             "./whisper-cli-darwin-${{ matrix.arch }}" --help > /dev/null
           elif [ "${{ matrix.os }}" = windows ]; then
