@@ -16,7 +16,6 @@ let
   flake = builtins.getFlake "github:NixOS/nixpkgs/nixos-unstable";
   ps = flake.legacyPackages.${builtins.currentSystem}.pkgsStatic;
 
-  # Reusable overrides for whisper-cli across platforms.
   whisperOverride = pkg: pkg.override {
 withSDL = false;
 withFFmpegSupport = false;
