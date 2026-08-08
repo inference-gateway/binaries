@@ -1,10 +1,14 @@
 # stt-binaries
 
-Prebuilt static speech-to-text binaries (whisper-cli, ffmpeg) auto-downloaded by the [Inference Gateway CLI](https://github.com/inference-gateway/cli) into `~/.infer/bin` when `speech_to_text.auto_download` is enabled.
+Prebuilt speech-to-text binaries (whisper-cli, ffmpeg) for Linux, macOS, and Windows, auto-downloaded by the [Inference Gateway CLI](https://github.com/inference-gateway/cli) into `~/.infer/bin` when `speech_to_text.auto_download` is enabled.
 
 Assets are named `<name>-<os>-<arch>` and verified against `checksums.txt` (sha256).
 
-Assets are reproducible `nix build nixpkgs#pkgsStatic.{whisper-cpp,ffmpeg-headless}` outputs (musl, Linux amd64/arm64). Dispatching the [Release workflow](.github/workflows/release.yml) runs [semantic-release](https://semantic-release.gitbook.io): the next version is computed from Conventional Commits since the last `vX.Y.Z` tag and published as a new immutable release with freshly built binaries (no commits since the last release → no new release). To refresh binaries against current nixpkgs without other changes, land a `fix: refresh binaries` commit and dispatch. macOS is served by `$PATH` (`brew install whisper-cpp ffmpeg`) instead of prebuilt assets.
+- **Linux** — Statically linked musl builds via `nix build nixpkgs#pkgsStatic.{whisper-cpp,ffmpeg-headless}`.
+- **macOS** — Homebrew-built binaries, ad-hoc signed on native macOS runners.
+- **Windows** — Mingw-w64 cross-compiled from Linux via Nix (`pkgsCross.mingwW64.pkgsStatic`).
+
+Dispatching the [Release workflow](.github/workflows/release.yml) runs [semantic-release](https://semantic-release.gitbook.io): the next version is computed from Conventional Commits since the last `vX.Y.Z` tag and published as a new immutable release with freshly built binaries (no commits since the last release → no new release). To refresh binaries against current nixpkgs without other changes, land a `fix: refresh binaries` commit and dispatch. Previously macOS was served only by `$PATH` (`brew install whisper-cpp ffmpeg`); it now ships prebuilt assets like the other platforms.
 
 ## Licenses
 
