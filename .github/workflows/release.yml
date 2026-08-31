@@ -131,6 +131,33 @@ jobs:
           cmake --build whisper.cpp/build -j --config Release --target whisper-cli
           install -m755 whisper.cpp/build/bin/whisper-cli.exe "whisper-cli-windows-${{ matrix.arch }}.exe"
 
+      - name: Build Windows llama-tts (llvm-mingw from source)
+        if: matrix.os == 'windows'
+        run: |
+          set -euo pipefail
+          LLVM_MINGW=llvm-mingw-20260616-ucrt-ubuntu-22.04-x86_64
+          if [ ! -d "$LLVM_MINGW" ]; then
+            curl -fsSL "https://github.com/mstorsjo/llvm-mingw/releases/download/20260616/${LLVM_MINGW}.tar.xz" | tar -xJ
+          fi
+          export PATH="$PWD/${LLVM_MINGW}/bin:$PATH"
+
+          # Same tag as static.nix and the macOS step, same toolchain file as
+          # the whisper-cli step above.
+          git clone --depth 1 --branch b10621 https://github.com/ggml-org/llama.cpp
+          cmake -S llama.cpp -B llama.cpp/build \
+            -DCMAKE_TOOLCHAIN_FILE="$PWD/mingw-w64.cmake" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DLLAMA_BUILD_SERVER=OFF \
+            -DLLAMA_BUILD_EXAMPLES=OFF \
+            -DLLAMA_BUILD_TESTS=OFF \
+            -DLLAMA_BUILD_TOOLS=ON \
+            -DGGML_NATIVE=OFF \
+            -DGGML_OPENMP=OFF \
+            -DCMAKE_EXE_LINKER_FLAGS="-static"
+          cmake --build llama.cpp/build -j --config Release --target llama-tts
+          install -m755 llama.cpp/build/bin/llama-tts.exe "llama-tts-windows-${{ matrix.arch }}.exe"
+
       - name: Build Windows ffmpeg (mingw-w64 from source)
         if: matrix.os == 'windows'
         run: |
@@ -248,6 +275,7 @@ jobs:
           elif [ "${{ matrix.os }}" = windows ]; then
             file "whisper-cli-windows-${{ matrix.arch }}.exe" | grep -qE '(PE32|PE32\+)'
             file "ffmpeg-windows-${{ matrix.arch }}.exe" | grep -qE '(PE32|PE32\+)'
+            file "llama-tts-windows-${{ matrix.arch }}.exe" | grep -qE '(PE32|PE32\+)'
           fi
 
       - uses: actions/upload-artifact@v7.0.1
@@ -342,6 +370,7 @@ jobs:
             llama-tts-linux-arm64 \
             llama-tts-darwin-amd64 \
             llama-tts-darwin-arm64 \
+            llama-tts-windows-amd64.exe \
             checksums.txt; do
             if [ ! -f "$f" ]; then
               echo "::error::missing release asset: $f"

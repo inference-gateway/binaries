@@ -53,6 +53,7 @@
           { "path": "dist/llama-tts-linux-arm64" },
           { "path": "dist/llama-tts-darwin-amd64" },
           { "path": "dist/llama-tts-darwin-arm64" },
+          { "path": "dist/llama-tts-windows-amd64.exe" },
           { "path": "dist/checksums.txt" }
         ]
       }

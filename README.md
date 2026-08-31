@@ -2,7 +2,7 @@
 
 Prebuilt speech binaries — speech-to-text (whisper-cli, ffmpeg) and text-to-speech (llama-tts) — for Linux, macOS, and Windows, auto-downloaded into `~/.infer/bin` by the [Inference Gateway CLI](https://github.com/inference-gateway/cli) (when `speech_to_text.auto_download` is enabled) and by the [Inference Gateway](https://github.com/inference-gateway/inference-gateway)'s local `local/qwen3-tts` speech engine.
 
-Assets are named `<name>-<os>-<arch>` and verified against `checksums.txt` (sha256). `llama-tts` ships for Linux and macOS only.
+Assets are named `<name>-<os>-<arch>` and verified against `checksums.txt` (sha256).
 
 - **Linux** — Statically linked musl builds via `nix build nixpkgs#pkgsStatic.{whisper-cpp,ffmpeg-headless}`.
 - **macOS** — Homebrew-built binaries, ad-hoc signed on native macOS runners.

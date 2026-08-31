@@ -36,5 +36,5 @@ No commits since the last release → no new release. To refresh binaries agains
 
 - `whisper-cli` only receives pre-converted 16 kHz mono WAV; `ffmpeg` only does local file-to-file audio conversion. No capture devices, network protocols, or video encoders are needed — don't re-enable disabled features.
 - macOS binaries are ad-hoc signed on native runners; Windows builds need bash on the host, which is why they cross-compile from Linux rather than via nixpkgs.
-- `llama-tts` ships for Linux and macOS only (the gateway's local speech engine doesn't target Windows); its static build deliberately disables the server, examples, and dynamic CPU dispatch — see the comments in `static.nix`.
+- `llama-tts`'s static build deliberately disables the server, examples, and dynamic CPU dispatch — see the comments in `static.nix`. Windows builds via the same llvm-mingw toolchain as whisper-cli.
 - `llama-tts` pins its own llama.cpp tag (in `static.nix` and mirrored in `release.yml`'s macOS step) instead of nixpkgs' `llama-cpp` src: the nixpkgs pin predates `--tts-lang`/Qwen3-TTS. Bump both together.
