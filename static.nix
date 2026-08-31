@@ -1,7 +1,8 @@
-# Static (musl) builds of the Linux STT binaries, published as release assets.
+# Static (musl) builds of the Linux STT/TTS binaries, published as release assets.
 # Build:
 #   nix build --impure -f static.nix whisper-cli            (Linux amd64/arm64)
 #   nix build --impure -f static.nix ffmpeg                 (Linux amd64/arm64)
+#   nix build --impure -f static.nix llama-tts              (Linux amd64/arm64)
 #
 # macOS and Windows binaries build from source on their runners (mingw-w64 for
 # Windows), not here: nixpkgs can't cross-compile whisper-cpp to Windows (its
@@ -58,8 +59,42 @@ let
     withZvbi = false;
   };
 
+  # llama-tts (llama.cpp's one-shot text-to-speech tool, used by the gateway's
+  # local/qwen3-tts engine), as a minimal CPU-only static build: no server, no
+  # examples, and no dynamic CPU dispatch (GGML_BACKEND_DL loads backend .so
+  # files at runtime, impossible in a fully static binary). llama.cpp is pinned
+  # to its own tag, NOT nixpkgs' llama-cpp src: the nixpkgs pin (b9925)
+  # predates the --tts-lang flag and Qwen3-TTS support the gateway relies on.
+  llamaCppTag = "b10621";
+  llamaTtsFor = pkgs: pkgs.stdenv.mkDerivation {
+    pname = "llama-tts";
+    version = llamaCppTag;
+    src = pkgs.fetchFromGitHub {
+      owner = "ggml-org";
+      repo = "llama.cpp";
+      tag = llamaCppTag;
+      sha256 = "10v5xxn4fh5gkhx38dz3adbl68g2dc4jgfx9pbcxbs0dwpwvnnmx";
+    };
+    nativeBuildInputs = [ pkgs.cmake ];
+    cmakeFlags = [
+      "-DGGML_NATIVE=OFF"
+      "-DBUILD_SHARED_LIBS=OFF"
+      "-DLLAMA_BUILD_SERVER=OFF"
+      "-DLLAMA_BUILD_EXAMPLES=OFF"
+      "-DLLAMA_BUILD_TESTS=OFF"
+      "-DLLAMA_BUILD_TOOLS=ON"
+    ];
+    buildPhase = ''
+      cmake --build . -j"$NIX_BUILD_CORES" --target llama-tts
+    '';
+    installPhase = ''
+      install -Dm755 bin/llama-tts $out/bin/llama-tts
+    '';
+  };
+
 in
 {
   whisper-cli = whisperFor ps;
   ffmpeg = ffmpegOverride ps.ffmpeg-headless;
+  llama-tts = llamaTtsFor ps;
 }
