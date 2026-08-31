@@ -49,6 +49,10 @@
           { "path": "dist/ffmpeg-darwin-amd64" },
           { "path": "dist/ffmpeg-darwin-arm64" },
           { "path": "dist/ffmpeg-windows-amd64.exe" },
+          { "path": "dist/llama-tts-linux-amd64" },
+          { "path": "dist/llama-tts-linux-arm64" },
+          { "path": "dist/llama-tts-darwin-amd64" },
+          { "path": "dist/llama-tts-darwin-arm64" },
           { "path": "dist/checksums.txt" }
         ]
       }
