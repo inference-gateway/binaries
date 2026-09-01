@@ -94,14 +94,22 @@ jobs:
         if: matrix.os == 'linux'
         uses: DeterminateSystems/nix-installer-action@v22
 
-      - name: Build Linux binaries (Nix)
+      - name: Build Linux whisper-cli (Nix)
         if: matrix.os == 'linux'
         run: |
           WHISPER=$(nix build --impure --no-link --print-out-paths -f static.nix whisper-cli)
-          FFMPEG=$(nix build --impure --no-link --print-out-paths -f static.nix ffmpeg | grep -e '-bin$')
-          LLAMA_TTS=$(nix build --impure --no-link --print-out-paths -f static.nix llama-tts)
           install -m755 "$WHISPER/bin/whisper-cli" "whisper-cli-linux-${{ matrix.arch }}"
+
+      - name: Build Linux ffmpeg (Nix)
+        if: matrix.os == 'linux'
+        run: |
+          FFMPEG=$(nix build --impure --no-link --print-out-paths -f static.nix ffmpeg | grep -e '-bin$')
           install -m755 "$FFMPEG/bin/ffmpeg" "ffmpeg-linux-${{ matrix.arch }}"
+
+      - name: Build Linux llama-tts (Nix)
+        if: matrix.os == 'linux'
+        run: |
+          LLAMA_TTS=$(nix build --impure --no-link --print-out-paths -f static.nix llama-tts)
           install -m755 "$LLAMA_TTS/bin/llama-tts" "llama-tts-linux-${{ matrix.arch }}"
 
       - name: Build Windows whisper-cli (llvm-mingw from source)
@@ -182,17 +190,20 @@ jobs:
             && make -j"$(nproc)" )
           install -m755 ffmpeg-src/ffmpeg.exe "ffmpeg-windows-${{ matrix.arch }}.exe"
 
-      - name: Build macOS binaries (static from source)
+      - name: Set up macOS build tools
         if: matrix.os == 'darwin'
         run: |
           set -euo pipefail
           brew install cmake nasm
-
           case "${{ matrix.arch }}" in
-            amd64) OSX_ARCH=x86_64 ;;
-            arm64) OSX_ARCH=arm64 ;;
+            amd64) echo "OSX_ARCH=x86_64" >> "$GITHUB_ENV" ;;
+            arm64) echo "OSX_ARCH=arm64" >> "$GITHUB_ENV" ;;
           esac
 
+      - name: Build macOS whisper-cli (static from source)
+        if: matrix.os == 'darwin'
+        run: |
+          set -euo pipefail
           git clone --depth 1 https://github.com/ggml-org/whisper.cpp
           cmake -S whisper.cpp -B whisper.cpp/build \
             -DCMAKE_BUILD_TYPE=Release \
@@ -205,7 +216,12 @@ jobs:
             -DGGML_ACCELERATE=ON
           cmake --build whisper.cpp/build -j --config Release --target whisper-cli
           install -m755 whisper.cpp/build/bin/whisper-cli "whisper-cli-darwin-${{ matrix.arch }}"
+          codesign -f -s - "whisper-cli-darwin-${{ matrix.arch }}"
 
+      - name: Build macOS ffmpeg (static from source)
+        if: matrix.os == 'darwin'
+        run: |
+          set -euo pipefail
           ffmpeg_cross=()
           if [ "$OSX_ARCH" != "$(uname -m)" ]; then
             ffmpeg_cross=(--enable-cross-compile --arch="$OSX_ARCH"
@@ -227,7 +243,12 @@ jobs:
               --enable-swresample \
             && make -j"$(sysctl -n hw.ncpu)" )
           install -m755 ffmpeg-src/ffmpeg "ffmpeg-darwin-${{ matrix.arch }}"
+          codesign -f -s - "ffmpeg-darwin-${{ matrix.arch }}"
 
+      - name: Build macOS llama-tts (static from source)
+        if: matrix.os == 'darwin'
+        run: |
+          set -euo pipefail
           git clone --depth 1 --branch b10621 https://github.com/ggml-org/llama.cpp
           cmake -S llama.cpp -B llama.cpp/build \
             -DCMAKE_BUILD_TYPE=Release \
@@ -243,9 +264,6 @@ jobs:
             -DGGML_ACCELERATE=ON
           cmake --build llama.cpp/build -j --config Release --target llama-tts
           install -m755 llama.cpp/build/bin/llama-tts "llama-tts-darwin-${{ matrix.arch }}"
-
-          codesign -f -s - "whisper-cli-darwin-${{ matrix.arch }}"
-          codesign -f -s - "ffmpeg-darwin-${{ matrix.arch }}"
           codesign -f -s - "llama-tts-darwin-${{ matrix.arch }}"
 
       - name: Sanity-check binaries
