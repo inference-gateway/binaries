@@ -52,7 +52,7 @@ jobs:
           set(CMAKE_C_COMPILER   x86_64-w64-mingw32-gcc)
           set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
           set(CMAKE_RC_COMPILER  x86_64-w64-mingw32-windres)
-          add_compile_definitions(_WIN32_WINNT=0x0602)
+          add_compile_definitions(_WIN32_WINNT=0x0A00)
           EOF
           cmake -S whisper.cpp -B whisper.cpp/build \
             -DCMAKE_TOOLCHAIN_FILE="$PWD/mingw-w64.cmake" \
@@ -79,7 +79,7 @@ jobs:
           set(CMAKE_C_COMPILER   x86_64-w64-mingw32-gcc)
           set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
           set(CMAKE_RC_COMPILER  x86_64-w64-mingw32-windres)
-          add_compile_definitions(_WIN32_WINNT=0x0602)
+          add_compile_definitions(_WIN32_WINNT=0x0A00)
           EOF
 
           git clone --depth 1 --branch b10621 https://github.com/ggml-org/llama.cpp
