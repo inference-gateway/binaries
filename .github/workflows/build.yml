@@ -141,7 +141,6 @@ jobs:
           cmake -S whisper.cpp -B whisper.cpp/build \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_OSX_ARCHITECTURES="$OSX_ARCH" \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 \
             -DBUILD_SHARED_LIBS=OFF \
             -DWHISPER_BUILD_TESTS=OFF \
             -DWHISPER_BUILD_EXAMPLES=ON \
@@ -164,8 +163,6 @@ jobs:
           git clone --depth 1 https://github.com/FFmpeg/FFmpeg ffmpeg-src
           ( cd ffmpeg-src && ./configure \
               --cc=clang ${ffmpeg_cross[@]+"${ffmpeg_cross[@]}"} \
-              --extra-cflags="-mmacosx-version-min=15.0" \
-              --extra-ldflags="-mmacosx-version-min=15.0" \
               --disable-shared --enable-static \
               --disable-doc --disable-debug --disable-network --disable-autodetect \
               --disable-everything \
@@ -189,7 +186,6 @@ jobs:
           cmake -S llama.cpp -B llama.cpp/build \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_OSX_ARCHITECTURES="$OSX_ARCH" \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 \
             -DBUILD_SHARED_LIBS=OFF \
             -DLLAMA_BUILD_SERVER=OFF \
             -DLLAMA_BUILD_EXAMPLES=OFF \
