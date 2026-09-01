@@ -237,6 +237,7 @@ jobs:
             -DLLAMA_BUILD_EXAMPLES=OFF \
             -DLLAMA_BUILD_TESTS=OFF \
             -DLLAMA_BUILD_TOOLS=ON \
+            -DLLAMA_OPENSSL=OFF \
             -DGGML_NATIVE=OFF \
             -DGGML_METAL=OFF \
             -DGGML_ACCELERATE=ON
