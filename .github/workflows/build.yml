@@ -109,14 +109,15 @@ jobs:
               --disable-shared --enable-static \
               --disable-doc --disable-debug --disable-network --disable-autodetect \
               --disable-everything \
-              --enable-demuxer=wav,w64,ogg,matroska,mov,mp3,flac,aac,aiff \
-              --enable-muxer=wav,w64 \
-              --enable-decoder=pcm_s16le,pcm_s16be,pcm_f32le,pcm_u8,opus,vorbis,mp3,aac,flac,alac \
-              --enable-encoder=pcm_s16le \
-              --enable-parser=opus,vorbis,aac,flac,mpegaudio \
+              --enable-demuxer=wav,w64,ogg,matroska,mov,mp3,flac,aac,aiff,image2,mpegts \
+              --enable-muxer=wav,w64,mp4,mov,image2,null \
+              --enable-decoder=pcm_s16le,pcm_s16be,pcm_f32le,pcm_u8,opus,vorbis,mp3,aac,flac,alac,h264,hevc,prores,mjpeg,png,vp8,vp9,mpeg4,rawvideo \
+              --enable-encoder=pcm_s16le,aac,mjpeg,png,rawvideo \
+              --enable-parser=opus,vorbis,aac,flac,mpegaudio,h264,hevc,mjpeg,mpeg4video,png,vp8,vp9 \
+              --enable-bsf=aac_adtstoasc,h264_mp4toannexb,hevc_mp4toannexb,extract_extradata \
               --enable-protocol=file,pipe \
-              --enable-filter=aresample,aformat,anull,atrim \
-              --enable-swresample \
+              --enable-filter=aresample,aformat,anull,atrim,apad,adelay,amix,amerge,asplit,asetpts,volume,volumedetect,loudnorm,highpass,lowpass,pan,channelsplit,null,format,scale,crop,fps,select,showinfo,thumbnail,trim,setpts,split,concat \
+              --enable-swresample --enable-swscale \
             && make -j"$(nproc)" )
           install -m755 ffmpeg-src/ffmpeg.exe "ffmpeg-windows-${{ matrix.platform.arch }}.exe"
 
@@ -163,14 +164,15 @@ jobs:
               --disable-shared --enable-static \
               --disable-doc --disable-debug --disable-network --disable-autodetect \
               --disable-everything \
-              --enable-demuxer=wav,w64,ogg,matroska,mov,mp3,flac,aac,aiff \
-              --enable-muxer=wav,w64 \
-              --enable-decoder=pcm_s16le,pcm_s16be,pcm_f32le,pcm_u8,opus,vorbis,mp3,aac,flac,alac \
-              --enable-encoder=pcm_s16le \
-              --enable-parser=opus,vorbis,aac,flac,mpegaudio \
+              --enable-demuxer=wav,w64,ogg,matroska,mov,mp3,flac,aac,aiff,image2,mpegts \
+              --enable-muxer=wav,w64,mp4,mov,image2,null \
+              --enable-decoder=pcm_s16le,pcm_s16be,pcm_f32le,pcm_u8,opus,vorbis,mp3,aac,flac,alac,h264,hevc,prores,mjpeg,png,vp8,vp9,mpeg4,rawvideo \
+              --enable-encoder=pcm_s16le,aac,mjpeg,png,rawvideo \
+              --enable-parser=opus,vorbis,aac,flac,mpegaudio,h264,hevc,mjpeg,mpeg4video,png,vp8,vp9 \
+              --enable-bsf=aac_adtstoasc,h264_mp4toannexb,hevc_mp4toannexb,extract_extradata \
               --enable-protocol=file,pipe \
-              --enable-filter=aresample,aformat,anull,atrim \
-              --enable-swresample \
+              --enable-filter=aresample,aformat,anull,atrim,apad,adelay,amix,amerge,asplit,asetpts,volume,volumedetect,loudnorm,highpass,lowpass,pan,channelsplit,null,format,scale,crop,fps,select,showinfo,thumbnail,trim,setpts,split,concat \
+              --enable-swresample --enable-swscale \
             && make -j"$(sysctl -n hw.ncpu)" )
           install -m755 ffmpeg-src/ffmpeg "ffmpeg-darwin-${{ matrix.platform.arch }}"
           codesign -f -s - "ffmpeg-darwin-${{ matrix.platform.arch }}"
