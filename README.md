@@ -8,6 +8,8 @@ Assets are named `<name>-<os>-<arch>` and verified against `checksums.txt` (sha2
 - **macOS** - Homebrew-built binaries, ad-hoc signed on native macOS runners.
 - **Windows** - Mingw-w64 cross-compiled from Linux via Nix (`pkgsCross.mingwW64.pkgsStatic`).
 
+`ffmpeg` macOS/Windows builds additionally cover video for the Desktop's content projects: they decode h264, hevc, prores, mjpeg, png, vp8/vp9 and mpeg4, write image sequences, mix/normalize audio (`adelay`, `amix`, `apad`, `volume`, `loudnorm`, …), and mux mp4/mov. No video encoders (consumers stream-copy video) and no `ffprobe` - probe with `ffmpeg -i`. The Linux build (nixpkgs `ffmpeg-headless`) already covers all of this.
+
 Dispatching the [Release workflow](.github/workflows/release.yml) runs [semantic-release](https://semantic-release.gitbook.io): the next version is computed from Conventional Commits since the last `vX.Y.Z` tag and published as a new immutable release with freshly built binaries (no commits since the last release → no new release). To refresh binaries against current nixpkgs without other changes, land a `fix: refresh binaries` commit and dispatch. Previously macOS was served only by `$PATH` (`brew install whisper-cpp ffmpeg`); it now ships prebuilt assets like the other platforms.
 
 ## Licenses
