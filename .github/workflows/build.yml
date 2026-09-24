@@ -229,7 +229,6 @@ jobs:
             ffmpeg) RUN_FLAG=-version ;;
             *)      RUN_FLAG=--help ;;
           esac
-          # The CLI's RecordStart needs libx264 and the platform screen grabber.
           check_capture() {
             [ "${{ matrix.binary }}" = ffmpeg ] || return 0
             "./$BIN" -hide_banner -encoders | grep -q ' libx264 '
