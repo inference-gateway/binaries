@@ -9,6 +9,8 @@ let
   };
 
   ffmpegOverride = pkg: pkg.override {
+    withXcbShm = true;
+    withXcbxfixes = true;
     withOpenmpt = false;
     withV4l2 = false;
     withVaapi = false;
@@ -31,7 +33,6 @@ let
     withTheora = false;
     withVpx = false;
     withWebp = false;
-    withX264 = false;
     withX265 = false;
     withXvid = false;
     withVidStab = false;

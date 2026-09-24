@@ -102,30 +102,44 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64-x86-64 nasm make git
+          sudo apt-get install -y gcc-mingw-w64-x86-64 nasm make git pkg-config
+          X264="$PWD/x264-out"
+          git clone --depth 1 --branch stable https://code.videolan.org/videolan/x264.git x264-src
+          ( cd x264-src && ./configure \
+              --host=x86_64-w64-mingw32 --cross-prefix=x86_64-w64-mingw32- \
+              --prefix="$X264" --enable-static --disable-cli --disable-opencl \
+            && make -j"$(nproc)" && make install )
+          export PKG_CONFIG_LIBDIR="$X264/lib/pkgconfig"
           git clone --depth 1 https://github.com/FFmpeg/FFmpeg ffmpeg-src
           ( cd ffmpeg-src && ./configure \
               --arch=x86_64 --target-os=mingw32 --cross-prefix=x86_64-w64-mingw32- \
+              --pkg-config=pkg-config --pkg-config-flags=--static \
               --disable-shared --enable-static \
+              --enable-gpl --enable-libx264 \
               --disable-doc --disable-debug --disable-network --disable-autodetect \
               --disable-everything \
               --enable-demuxer=wav,w64,ogg,matroska,mov,mp3,flac,aac,aiff,image2,mpegts \
               --enable-muxer=wav,w64,mp4,mov,image2,null \
               --enable-decoder=pcm_s16le,pcm_s16be,pcm_f32le,pcm_u8,opus,vorbis,mp3,aac,flac,alac,h264,hevc,prores,mjpeg,png,vp8,vp9,mpeg4,rawvideo \
-              --enable-encoder=pcm_s16le,aac,mjpeg,png,rawvideo \
+              --enable-encoder=pcm_s16le,aac,mjpeg,png,rawvideo,libx264 \
+              --enable-indev=gdigrab \
               --enable-parser=opus,vorbis,aac,flac,mpegaudio,h264,hevc,mjpeg,mpeg4video,png,vp8,vp9 \
               --enable-bsf=aac_adtstoasc,h264_mp4toannexb,hevc_mp4toannexb,extract_extradata \
               --enable-protocol=file,pipe \
               --enable-filter=aresample,aformat,anull,atrim,apad,adelay,amix,amerge,asplit,asetpts,volume,volumedetect,loudnorm,highpass,lowpass,pan,channelsplit,null,format,scale,crop,fps,select,showinfo,thumbnail,trim,setpts,split,concat \
               --enable-swresample --enable-swscale \
             && make -j"$(nproc)" )
+          for c in LIBX264_ENCODER GDIGRAB_INDEV; do
+            grep -q "define CONFIG_$c 1" ffmpeg-src/config_components.h \
+              || { echo "::error::ffmpeg.exe was built without $c"; exit 1; }
+          done
           install -m755 ffmpeg-src/ffmpeg.exe "ffmpeg-windows-${{ matrix.platform.arch }}.exe"
 
       - name: Set up macOS build tools
         if: matrix.platform.os == 'darwin'
         run: |
           set -euo pipefail
-          brew install cmake nasm
+          brew install cmake nasm pkgconf
           case "${{ matrix.platform.arch }}" in
             amd64) echo "OSX_ARCH=x86_64" >> "$GITHUB_ENV" ;;
             arm64) echo "OSX_ARCH=arm64" >> "$GITHUB_ENV" ;;
@@ -158,16 +172,30 @@ jobs:
             ffmpeg_cross=(--enable-cross-compile --arch="$OSX_ARCH"
               --extra-cflags="-arch $OSX_ARCH" --extra-ldflags="-arch $OSX_ARCH")
           fi
+          x264_cross=()
+          if [ "$OSX_ARCH" != "$(uname -m)" ]; then
+            x264_cross=(--host="$OSX_ARCH-apple-darwin"
+              --extra-cflags="-arch $OSX_ARCH" --extra-ldflags="-arch $OSX_ARCH")
+          fi
+          X264="$PWD/x264-out"
+          git clone --depth 1 --branch stable https://code.videolan.org/videolan/x264.git x264-src
+          ( cd x264-src && ./configure ${x264_cross[@]+"${x264_cross[@]}"} \
+              --prefix="$X264" --enable-static --disable-cli --disable-opencl \
+            && make -j"$(sysctl -n hw.ncpu)" && make install )
+          export PKG_CONFIG_PATH="$X264/lib/pkgconfig"
           git clone --depth 1 https://github.com/FFmpeg/FFmpeg ffmpeg-src
           ( cd ffmpeg-src && ./configure \
               --cc=clang ${ffmpeg_cross[@]+"${ffmpeg_cross[@]}"} \
+              --pkg-config-flags=--static \
               --disable-shared --enable-static \
+              --enable-gpl --enable-libx264 --enable-avfoundation \
               --disable-doc --disable-debug --disable-network --disable-autodetect \
               --disable-everything \
               --enable-demuxer=wav,w64,ogg,matroska,mov,mp3,flac,aac,aiff,image2,mpegts \
               --enable-muxer=wav,w64,mp4,mov,image2,null \
               --enable-decoder=pcm_s16le,pcm_s16be,pcm_f32le,pcm_u8,opus,vorbis,mp3,aac,flac,alac,h264,hevc,prores,mjpeg,png,vp8,vp9,mpeg4,rawvideo \
-              --enable-encoder=pcm_s16le,aac,mjpeg,png,rawvideo \
+              --enable-encoder=pcm_s16le,aac,mjpeg,png,rawvideo,libx264 \
+              --enable-indev=avfoundation \
               --enable-parser=opus,vorbis,aac,flac,mpegaudio,h264,hevc,mjpeg,mpeg4video,png,vp8,vp9 \
               --enable-bsf=aac_adtstoasc,h264_mp4toannexb,hevc_mp4toannexb,extract_extradata \
               --enable-protocol=file,pipe \
@@ -206,9 +234,17 @@ jobs:
             ffmpeg) RUN_FLAG=-version ;;
             *)      RUN_FLAG=--help ;;
           esac
+          check_capture() {
+            [ "${{ matrix.binary }}" = ffmpeg ] || return 0
+            "./$BIN" -hide_banner -encoders | grep ' libx264 ' > /dev/null \
+              || { echo "::error::$BIN has no libx264 encoder"; exit 1; }
+            "./$BIN" -hide_banner -devices | grep " $1 " > /dev/null \
+              || { echo "::error::$BIN has no $1 input device"; exit 1; }
+          }
           if [ "${{ matrix.platform.os }}" = linux ]; then
             file "$BIN" | grep -q 'statically linked'
             "./$BIN" "$RUN_FLAG" > /dev/null
+            check_capture x11grab
           elif [ "${{ matrix.platform.os }}" = darwin ]; then
             case "${{ matrix.platform.arch }}" in amd64) want=x86_64 ;; arm64) want=arm64 ;; esac
             file "$BIN" | grep -q "Mach-O.*$want"
@@ -219,6 +255,7 @@ jobs:
             fi
             if [ "$want" = "$(uname -m)" ]; then
               "./$BIN" "$RUN_FLAG" > /dev/null
+              check_capture avfoundation
             else
               echo "cross-built $want on $(uname -m) host; skipping execution check"
             fi
