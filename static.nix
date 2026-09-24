@@ -8,8 +8,6 @@ let
     wget = pkgs.wget.overrideAttrs (_: { doCheck = false; });
   };
 
-  # libx264 (default on for the GPL headless variant) and XCB screen grabbing
-  # (x11grab, with xfixes for the cursor) back the CLI's RecordStart tool.
   ffmpegOverride = pkg: pkg.override {
     withXcbShm = true;
     withXcbxfixes = true;
