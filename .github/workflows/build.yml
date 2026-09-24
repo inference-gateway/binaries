@@ -102,11 +102,20 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64-x86-64 nasm make git
+          sudo apt-get install -y gcc-mingw-w64-x86-64 nasm make git pkg-config
+          X264="$PWD/x264-out"
+          git clone --depth 1 --branch stable https://code.videolan.org/videolan/x264.git x264-src
+          ( cd x264-src && ./configure \
+              --host=x86_64-w64-mingw32 --cross-prefix=x86_64-w64-mingw32- \
+              --prefix="$X264" --enable-static --disable-cli --disable-opencl \
+            && make -j"$(nproc)" && make install )
+          export PKG_CONFIG_LIBDIR="$X264/lib/pkgconfig"
           git clone --depth 1 https://github.com/FFmpeg/FFmpeg ffmpeg-src
           ( cd ffmpeg-src && ./configure \
               --arch=x86_64 --target-os=mingw32 --cross-prefix=x86_64-w64-mingw32- \
+              --pkg-config=pkg-config --pkg-config-flags=--static \
               --disable-shared --enable-static \
+              --enable-gpl --enable-libx264 --enable-encoder=libx264 --enable-indev=gdigrab \
               --disable-doc --disable-debug --disable-network --disable-autodetect \
               --disable-everything \
               --enable-demuxer=wav,w64,ogg,matroska,mov,mp3,flac,aac,aiff,image2,mpegts \
@@ -125,7 +134,7 @@ jobs:
         if: matrix.platform.os == 'darwin'
         run: |
           set -euo pipefail
-          brew install cmake nasm
+          brew install cmake nasm pkgconf
           case "${{ matrix.platform.arch }}" in
             amd64) echo "OSX_ARCH=x86_64" >> "$GITHUB_ENV" ;;
             arm64) echo "OSX_ARCH=arm64" >> "$GITHUB_ENV" ;;
@@ -158,10 +167,24 @@ jobs:
             ffmpeg_cross=(--enable-cross-compile --arch="$OSX_ARCH"
               --extra-cflags="-arch $OSX_ARCH" --extra-ldflags="-arch $OSX_ARCH")
           fi
+          x264_cross=()
+          if [ "$OSX_ARCH" != "$(uname -m)" ]; then
+            x264_cross=(--host="$OSX_ARCH-apple-darwin"
+              --extra-cflags="-arch $OSX_ARCH" --extra-ldflags="-arch $OSX_ARCH")
+          fi
+          X264="$PWD/x264-out"
+          git clone --depth 1 --branch stable https://code.videolan.org/videolan/x264.git x264-src
+          ( cd x264-src && ./configure ${x264_cross[@]+"${x264_cross[@]}"} \
+              --prefix="$X264" --enable-static --disable-cli --disable-opencl \
+            && make -j"$(sysctl -n hw.ncpu)" && make install )
+          export PKG_CONFIG_PATH="$X264/lib/pkgconfig"
           git clone --depth 1 https://github.com/FFmpeg/FFmpeg ffmpeg-src
           ( cd ffmpeg-src && ./configure \
               --cc=clang ${ffmpeg_cross[@]+"${ffmpeg_cross[@]}"} \
+              --pkg-config-flags=--static \
               --disable-shared --enable-static \
+              --enable-gpl --enable-libx264 --enable-encoder=libx264 \
+              --enable-avfoundation --enable-indev=avfoundation \
               --disable-doc --disable-debug --disable-network --disable-autodetect \
               --disable-everything \
               --enable-demuxer=wav,w64,ogg,matroska,mov,mp3,flac,aac,aiff,image2,mpegts \
@@ -206,9 +229,16 @@ jobs:
             ffmpeg) RUN_FLAG=-version ;;
             *)      RUN_FLAG=--help ;;
           esac
+          # The CLI's RecordStart needs libx264 and the platform screen grabber.
+          check_capture() {
+            [ "${{ matrix.binary }}" = ffmpeg ] || return 0
+            "./$BIN" -hide_banner -encoders | grep -q ' libx264 '
+            "./$BIN" -hide_banner -devices | grep -q " $1 "
+          }
           if [ "${{ matrix.platform.os }}" = linux ]; then
             file "$BIN" | grep -q 'statically linked'
             "./$BIN" "$RUN_FLAG" > /dev/null
+            check_capture x11grab
           elif [ "${{ matrix.platform.os }}" = darwin ]; then
             case "${{ matrix.platform.arch }}" in amd64) want=x86_64 ;; arm64) want=arm64 ;; esac
             file "$BIN" | grep -q "Mach-O.*$want"
@@ -219,6 +249,7 @@ jobs:
             fi
             if [ "$want" = "$(uname -m)" ]; then
               "./$BIN" "$RUN_FLAG" > /dev/null
+              check_capture avfoundation
             else
               echo "cross-built $want on $(uname -m) host; skipping execution check"
             fi

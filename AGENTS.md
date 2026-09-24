@@ -34,7 +34,7 @@ No commits since the last release → no new release. To refresh binaries agains
 
 ## Gotchas
 
-- `whisper-cli` only receives pre-converted 16 kHz mono WAV; `ffmpeg` only does local file-to-file audio conversion. No capture devices, network protocols, or video encoders are needed — don't re-enable disabled features.
+- `whisper-cli` only receives pre-converted 16 kHz mono WAV. `ffmpeg` does local file-to-file conversion plus screen recording for the CLI's `RecordStart` tool, so it must keep `libx264` and the platform screen grabber (`avfoundation` / `gdigrab` / `x11grab`); the Build sanity step checks both where the binary can run. No network protocols or other video encoders are needed — don't re-enable other disabled features.
 - macOS binaries are built from source, ad-hoc signed, and must stay self-contained (system libs only — enforced by the `otool -L` sanity check, which is why llama.cpp builds with `LLAMA_OPENSSL=OFF` on macOS). Windows builds cross-compile from Linux rather than via nixpkgs.
 - `llama-tts`'s static build deliberately disables the server, examples, tests, and dynamic CPU dispatch (`GGML_NATIVE=OFF`). Windows builds via the same llvm-mingw toolchain as whisper-cli.
 - `llama-tts` pins its own llama.cpp tag (`b10621`, set in `static.nix` and hardcoded in `build.yml`'s macOS and Windows steps) instead of nixpkgs' `llama-cpp` src: the nixpkgs pin predates `--tts-lang`/Qwen3-TTS. Bump all three together.
