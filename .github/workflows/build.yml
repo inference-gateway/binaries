@@ -19,7 +19,6 @@ jobs:
           - { runner: ubuntu-24.04-arm, os: linux, arch: arm64 }
           - { runner: ubuntu-24.04, os: windows, arch: amd64 }
           - { runner: macos-26, os: darwin, arch: arm64 }
-          - { runner: macos-26, os: darwin, arch: amd64 }
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - uses: actions/checkout@v7.0.1
@@ -140,10 +139,7 @@ jobs:
         run: |
           set -euo pipefail
           brew install cmake nasm pkgconf
-          case "${{ matrix.platform.arch }}" in
-            amd64) echo "OSX_ARCH=x86_64" >> "$GITHUB_ENV" ;;
-            arm64) echo "OSX_ARCH=arm64" >> "$GITHUB_ENV" ;;
-          esac
+          echo "OSX_ARCH=arm64" >> "$GITHUB_ENV"
 
       - name: Build macOS whisper-cli (static from source)
         if: matrix.platform.os == 'darwin' && matrix.binary == 'whisper-cli'
@@ -246,7 +242,7 @@ jobs:
             "./$BIN" "$RUN_FLAG" > /dev/null
             check_capture x11grab
           elif [ "${{ matrix.platform.os }}" = darwin ]; then
-            case "${{ matrix.platform.arch }}" in amd64) want=x86_64 ;; arm64) want=arm64 ;; esac
+            want=arm64
             file "$BIN" | grep -q "Mach-O.*$want"
             if otool -L "$BIN" | tail -n +2 | grep -vqE '^\s+(/usr/lib/|/System/Library/)'; then
               echo "::error::$BIN links a non-system library (not self-contained):"

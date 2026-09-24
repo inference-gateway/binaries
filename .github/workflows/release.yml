@@ -139,17 +139,14 @@ jobs:
           for f in \
             whisper-cli-linux-amd64 \
             whisper-cli-linux-arm64 \
-            whisper-cli-darwin-amd64 \
             whisper-cli-darwin-arm64 \
             whisper-cli-windows-amd64.exe \
             ffmpeg-linux-amd64 \
             ffmpeg-linux-arm64 \
-            ffmpeg-darwin-amd64 \
             ffmpeg-darwin-arm64 \
             ffmpeg-windows-amd64.exe \
             llama-tts-linux-amd64 \
             llama-tts-linux-arm64 \
-            llama-tts-darwin-amd64 \
             llama-tts-darwin-arm64 \
             llama-tts-windows-amd64.exe \
             checksums.txt; do
