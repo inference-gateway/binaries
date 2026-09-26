@@ -62,7 +62,7 @@ jobs:
             -DGGML_NATIVE=OFF \
             -DGGML_OPENMP=OFF \
             -DCMAKE_EXE_LINKER_FLAGS="-static"
-          cmake --build whisper.cpp/build -j --config Release --target whisper-cli
+          cmake --build whisper.cpp/build -j"$(nproc)" --config Release --target whisper-cli
           install -m755 whisper.cpp/build/bin/whisper-cli.exe "whisper-cli-windows-${{ matrix.platform.arch }}.exe"
 
       - name: Build Windows llama-tts (llvm-mingw from source)
@@ -93,7 +93,7 @@ jobs:
             -DGGML_NATIVE=OFF \
             -DGGML_OPENMP=OFF \
             -DCMAKE_EXE_LINKER_FLAGS="-static"
-          cmake --build llama.cpp/build -j --config Release --target llama-tts
+          cmake --build llama.cpp/build -j"$(nproc)" --config Release --target llama-tts
           install -m755 llama.cpp/build/bin/llama-tts.exe "llama-tts-windows-${{ matrix.platform.arch }}.exe"
 
       - name: Build Windows ffmpeg (mingw-w64 from source)
@@ -155,7 +155,7 @@ jobs:
             -DGGML_NATIVE=OFF \
             -DGGML_METAL=OFF \
             -DGGML_ACCELERATE=ON
-          cmake --build whisper.cpp/build -j --config Release --target whisper-cli
+          cmake --build whisper.cpp/build -j"$(sysctl -n hw.ncpu)" --config Release --target whisper-cli
           install -m755 whisper.cpp/build/bin/whisper-cli "whisper-cli-darwin-${{ matrix.platform.arch }}"
           codesign -f -s - "whisper-cli-darwin-${{ matrix.platform.arch }}"
 
@@ -218,7 +218,7 @@ jobs:
             -DGGML_NATIVE=OFF \
             -DGGML_METAL=OFF \
             -DGGML_ACCELERATE=ON
-          cmake --build llama.cpp/build -j --config Release --target llama-tts
+          cmake --build llama.cpp/build -j"$(sysctl -n hw.ncpu)" --config Release --target llama-tts
           install -m755 llama.cpp/build/bin/llama-tts "llama-tts-darwin-${{ matrix.platform.arch }}"
           codesign -f -s - "llama-tts-darwin-${{ matrix.platform.arch }}"
 
