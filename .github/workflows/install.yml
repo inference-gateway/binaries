@@ -2,7 +2,9 @@ name: Install
 
 on:
   pull_request:
-    paths: [install.sh, .github/workflows/install.yml]
+    paths:
+      - install.sh
+      - .github/workflows/install.yml
   workflow_dispatch:
 
 permissions:
