@@ -50,6 +50,9 @@ jobs:
               "@semantic-release/exec": "7.1.0",
               "@semantic-release/github": "12.0.9",
               "conventional-changelog-conventionalcommits": "10.2.0"
+            },
+            "overrides": {
+              "conventional-changelog-writer": "^9.1.0"
             }
           }
           EOF
@@ -113,6 +116,9 @@ jobs:
               "@semantic-release/exec": "7.1.0",
               "@semantic-release/github": "12.0.9",
               "conventional-changelog-conventionalcommits": "10.2.0"
+            },
+            "overrides": {
+              "conventional-changelog-writer": "^9.1.0"
             }
           }
           EOF
