@@ -101,7 +101,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64-x86-64 nasm make git pkg-config
+          sudo apt-get install -y gcc-mingw-w64-x86-64 libz-mingw-w64-dev nasm make git pkg-config
           X264="$PWD/x264-out"
           git clone --depth 1 --branch stable https://code.videolan.org/videolan/x264.git x264-src
           ( cd x264-src && ./configure \
@@ -113,8 +113,8 @@ jobs:
           ( cd ffmpeg-src && ./configure \
               --arch=x86_64 --target-os=mingw32 --cross-prefix=x86_64-w64-mingw32- \
               --pkg-config=pkg-config --pkg-config-flags=--static \
-              --disable-shared --enable-static \
-              --enable-gpl --enable-libx264 \
+              --disable-shared --enable-static --extra-ldflags=-static \
+              --enable-gpl --enable-libx264 --enable-zlib \
               --disable-doc --disable-debug --disable-network --disable-autodetect \
               --disable-everything \
               --enable-demuxer=wav,w64,ogg,matroska,mov,mp3,flac,aac,aiff,image2,mpegts \
@@ -128,7 +128,7 @@ jobs:
               --enable-filter=aresample,aformat,anull,atrim,apad,adelay,amix,amerge,asplit,asetpts,volume,volumedetect,loudnorm,highpass,lowpass,pan,channelsplit,null,format,scale,crop,fps,select,showinfo,thumbnail,trim,setpts,split,concat \
               --enable-swresample --enable-swscale \
             && make -j"$(nproc)" )
-          for c in LIBX264_ENCODER GDIGRAB_INDEV; do
+          for c in LIBX264_ENCODER GDIGRAB_INDEV PNG_ENCODER; do
             grep -q "define CONFIG_$c 1" ffmpeg-src/config_components.h \
               || { echo "::error::ffmpeg.exe was built without $c"; exit 1; }
           done
@@ -184,7 +184,7 @@ jobs:
               --cc=clang ${ffmpeg_cross[@]+"${ffmpeg_cross[@]}"} \
               --pkg-config-flags=--static \
               --disable-shared --enable-static \
-              --enable-gpl --enable-libx264 --enable-avfoundation \
+              --enable-gpl --enable-libx264 --enable-avfoundation --enable-zlib \
               --disable-doc --disable-debug --disable-network --disable-autodetect \
               --disable-everything \
               --enable-demuxer=wav,w64,ogg,matroska,mov,mp3,flac,aac,aiff,image2,mpegts \
@@ -230,17 +230,19 @@ jobs:
             ffmpeg) RUN_FLAG=-version ;;
             *)      RUN_FLAG=--help ;;
           esac
-          check_capture() {
+          check_ffmpeg() {
             [ "${{ matrix.binary }}" = ffmpeg ] || return 0
-            "./$BIN" -hide_banner -encoders | grep ' libx264 ' > /dev/null \
-              || { echo "::error::$BIN has no libx264 encoder"; exit 1; }
+            for enc in libx264 png; do
+              "./$BIN" -hide_banner -encoders | grep " $enc " > /dev/null \
+                || { echo "::error::$BIN has no $enc encoder"; exit 1; }
+            done
             "./$BIN" -hide_banner -devices | grep " $1 " > /dev/null \
               || { echo "::error::$BIN has no $1 input device"; exit 1; }
           }
           if [ "${{ matrix.platform.os }}" = linux ]; then
             file "$BIN" | grep -q 'statically linked'
             "./$BIN" "$RUN_FLAG" > /dev/null
-            check_capture x11grab
+            check_ffmpeg x11grab
           elif [ "${{ matrix.platform.os }}" = darwin ]; then
             want=arm64
             file "$BIN" | grep -q "Mach-O.*$want"
@@ -251,7 +253,7 @@ jobs:
             fi
             if [ "$want" = "$(uname -m)" ]; then
               "./$BIN" "$RUN_FLAG" > /dev/null
-              check_capture avfoundation
+              check_ffmpeg avfoundation
             else
               echo "cross-built $want on $(uname -m) host; skipping execution check"
             fi
