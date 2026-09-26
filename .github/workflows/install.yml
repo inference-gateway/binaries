@@ -1,0 +1,34 @@
+name: Install
+
+on:
+  pull_request:
+    paths: [install.sh, .github/workflows/install.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: install.sh ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, macos-26, windows-latest]
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Install via gh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: sh install.sh whisper-cli
+
+      - name: Rerun via curl (already up to date)
+        run: sh install.sh whisper-cli | grep 'is up to date'
+
+      - name: Run the installed binary
+        run: ~/.infer/bin/tools/whisper-cli --help > /dev/null
