@@ -4,6 +4,14 @@ Prebuilt speech binaries - speech-to-text (whisper-cli, ffmpeg) and text-to-spee
 
 Assets are named `<name>-<os>-<arch>` and verified against `checksums.txt` (sha256).
 
+To install or update them yourself (Linux, macOS, Windows via Git Bash):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/inference-gateway/binaries/main/install.sh | sh -s -- ffmpeg
+```
+
+Names default to all binaries. `INSTALL_DIR` (default `~/.infer/bin/tools`) and `VERSION` (default `latest`, e.g. `v0.5.0`) override the target. It downloads through `gh` when authenticated, curl otherwise, and replaces any binary whose sha256 doesn't match the release, so stale copies get upgraded.
+
 - **Linux** - Statically linked musl builds via `nix build nixpkgs#pkgsStatic.{whisper-cpp,ffmpeg-headless}`.
 - **macOS** - Homebrew-built binaries, ad-hoc signed on native macOS runners.
 - **Windows** - Mingw-w64 cross-compiled from Linux via Nix (`pkgsCross.mingwW64.pkgsStatic`).

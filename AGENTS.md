@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This repo publishes prebuilt speech binaries (`whisper-cli`, `ffmpeg` for speech-to-text; `llama-tts` for text-to-speech) as GitHub release assets, auto-downloaded by the Inference Gateway CLI and by the gateway's local speech engine. There is no application code to build, test, or lint — the "product" is the release pipeline. See `README.md` for what the binaries are and their licenses.
+This repo publishes prebuilt speech binaries (`whisper-cli`, `ffmpeg` for speech-to-text; `llama-tts` for text-to-speech) as GitHub release assets, auto-downloaded by the Inference Gateway CLI and by the gateway's local speech engine. There is no application code to build, test, or lint — the "product" is the release pipeline, plus `install.sh` (POSIX sh, checked on Linux/macOS/Windows Git Bash by `.github/workflows/install.yml`). See `README.md` for what the binaries are and their licenses.
 
 ## Build
 
