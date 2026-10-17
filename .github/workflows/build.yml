@@ -261,7 +261,7 @@ jobs:
             file "$BIN.exe" | grep -qE '(PE32|PE32\+)'
           fi
 
-      - uses: actions/upload-artifact@v7.0.1
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: binaries-${{ matrix.platform.os }}-${{ matrix.platform.arch }}-${{ matrix.binary }}
           path: ${{ matrix.binary }}-${{ matrix.platform.os }}-${{ matrix.platform.arch }}*
