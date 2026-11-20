@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This repo publishes prebuilt speech binaries (`whisper-cli`, `ffmpeg` for speech-to-text; `llama-tts` for text-to-speech) as GitHub release assets, auto-downloaded by the Inference Gateway CLI and by the gateway's local speech engine. There is no application code to build, test, or lint — the "product" is the release pipeline, plus `install.sh` (POSIX sh, checked on Linux/macOS/Windows Git Bash by `.github/workflows/install.yml`). See `README.md` for what the binaries are and their licenses.
+This repo publishes prebuilt speech binaries (`whisper-cli`, `ffmpeg` for speech-to-text; `llama-tts` for text-to-speech) as GitHub release assets, auto-downloaded by the Inference Gateway CLI and by the gateway's local speech engine. There is no application code to build, test, or lint — the "product" is the release pipeline, plus `install.sh` (POSIX sh, checked on Linux/macOS/Windows Git Bash by the **Install** workflow, which runs automatically on any PR touching it — `.github/workflows/install.yml`). See `README.md` for what the binaries are and their licenses.
 
 ## Build
 
@@ -8,17 +8,17 @@ Linux binaries build locally via Nix (musl, static):
 
 ```sh
 nix build --impure -f static.nix whisper-cli   # linux amd64/arm64
-nix build --impure -f static.nix ffmpeg
+nix build --impure --no-link --print-out-paths -f static.nix ffmpeg | grep -e '-bin$'  # ffmpeg has multiple outputs; the binary is in the -bin one
 nix build --impure -f static.nix llama-tts
 ```
 
-macOS and Windows binaries are **not** built from `static.nix` — `.github/workflows/build.yml` builds them from source on their runners (cmake/nasm via Homebrew on macOS; llvm-mingw for `whisper-cli`/`llama-tts` and gcc-mingw-w64 for `ffmpeg`, cross-compiled on Linux for Windows). Do not try to reproduce them locally. Dispatch the **Build** workflow to test build changes: it runs the per-binary matrix with a sanity-check step (static/self-contained/PE) and uploads artifacts without publishing.
+macOS and Windows binaries are **not** built from `static.nix` — `.github/workflows/build.yml` builds them from source on their runners (cmake/nasm via Homebrew on macOS; llvm-mingw for `whisper-cli`/`llama-tts` and gcc-mingw-w64 for `ffmpeg`, cross-compiled on Linux for Windows). Do not try to reproduce them locally. Dispatch the **Build** workflow (`gh workflow run build.yml`) to test build changes: it runs the per-binary matrix with a sanity-check step (static/self-contained/PE) and uploads artifacts without publishing.
 
 `static.nix` pins nixpkgs to a known-good revision (`builtins.getFlake "github:NixOS/nixpkgs/<rev>"`). Do not bump it casually; upstream drift breaks the static build. Every `with* = false` override disables an optional feature whose dependency fails to build statically — don't re-enable them.
 
 ## Releasing
 
-Releases are fully automated. Dispatching the **Release** workflow runs semantic-release, which:
+Releases are fully automated. Dispatching the **Release** workflow (`gh workflow run release.yml`) runs semantic-release, which:
 
 - computes the next version from Conventional Commits since the last `vX.Y.Z` tag,
 - builds all assets via the `build.yml` matrix, and
